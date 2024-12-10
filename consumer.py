@@ -5,7 +5,7 @@ from pyspark.sql.types import StructType, StructField, StringType, DoubleType, I
 import happybase  # Cliente para interactuar con HBase
 import time
 
-KAFKA_PRODUCER_HOST = "ec2-34-207-77-161.compute-1.amazonaws.com:9092"
+KAFKA_PRODUCER_HOST = "ec2-34-207-77-161.compute-1.amazonaws.com"
 EMR_HOST = "ec2-44-197-184-85.compute-1.amazonaws.com"
 HDFS_NAMENODE_HOST = EMR_HOST + ":8020"
 
@@ -15,7 +15,7 @@ BATCH_SIZE = 100
 
 # Configuración del consumer de Kafka
 conf = {
-    'bootstrap.servers': KAFKA_PRODUCER_HOST,
+    'bootstrap.servers': KAFKA_PRODUCER_HOST + ":9092",
     'group.id': 'test-group',
     'auto.offset.reset': 'earliest',  # Leer mensajes desde el principio si no hay commits
 }

@@ -7,7 +7,7 @@ Autor: **Gonzalo Emiliano Quispe Huanca**
 Este documento detalla los pasos necesarios para implementar el proyecto final, incluyendo la configuración de un **broker de Kafka** en una instancia EC2 de Amazon Web Services (AWS).  
 
 ### Variables Importantes:
-Debe actualizar estas variables en los scripts de hadoop.py, backend.py y consumer.py antes de continuar con el proceso.
+Debe actualizar estas variables en los scripts de hadoop.py, backend.py, consumer.py e index.html antes de continuar con el proceso.
 - `{KAFKA_PRODUCER_HOST}`: Corresponde al DNS público del broker de Kafka.
 - `{EMR_HOST}`: Corresponde al DNS público del EMR Amazon con Hadoop.
 

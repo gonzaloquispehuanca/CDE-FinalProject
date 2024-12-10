@@ -105,7 +105,8 @@
 
     // Send vote via POST request
     function send_vote(ttconst, vote) {
-      const url = "http://ec2-34-207-77-161.compute-1.amazonaws.com:8082/topics/movie_vote";
+      const KAFKA_PRODUCER_HOST = "ec2-34-207-77-161.compute-1.amazonaws.com"
+      const url = "http://"+KAFKA_PRODUCER_HOST+":8082/topics/movie_vote";
       const headers = {
         "Content-Type": "application/vnd.kafka.json.v2+json"
       };
