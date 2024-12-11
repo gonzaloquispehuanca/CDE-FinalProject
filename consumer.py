@@ -5,8 +5,8 @@ from pyspark.sql.types import StructType, StructField, StringType, DoubleType, I
 import happybase  # Cliente para interactuar con HBase
 import time
 
-KAFKA_PRODUCER_HOST = "35.173.137.173"
-EMR_HOST = "ec2-44-220-168-251.compute-1.amazonaws.com"
+KAFKA_PRODUCER_HOST = "ec2-18-207-193-119.compute-1.amazonaws.com"
+EMR_HOST = "ec2-44-200-199-44.compute-1.amazonaws.com"
 HDFS_NAMENODE_HOST = EMR_HOST + ":8020"
 
 # Parámetros configurables

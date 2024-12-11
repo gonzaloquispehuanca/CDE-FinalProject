@@ -1,6 +1,6 @@
 // Constante para la API
-const EMR_HOST = "ec2-44-220-168-251.compute-1.amazonaws.com";
-const KAFKA_PRODUCER_HOST = "ec2-35-173-137-173.compute-1.amazonaws.com";
+const EMR_HOST = "ec2-44-200-199-44.compute-1.amazonaws.com";
+const KAFKA_PRODUCER_HOST = "ec2-18-207-193-119.compute-1.amazonaws.com";
 const API_BASE_URL = "http://"+EMR_HOST+":5000";
 
 // Función para manejar los clics en las estrellas
@@ -136,7 +136,7 @@ async function buildLineGraph() {
   const decades = Array.from(new Set(data.map(d => d.decade))).sort();
 
   // Establecer márgenes
-  const margin = {top: 20, right: 30, bottom: 40, left: 40};
+  const margin = {top: 5, right: 5, bottom: 40, left: 40};
 
   // Obtener el tamaño del div de contenedor
   const container = d3.select("#genre-distribution-chart");
@@ -178,22 +178,22 @@ async function buildLineGraph() {
                        .y(d => y(d.count))
                    )
                    .on("mouseover", function(event, d) {
-                     d3.select(this)
-                       .transition()
-                       .duration(200)
-                       .attr("stroke-width", 4);  // Aumenta el grosor de la línea
-                     tooltip.transition().duration(200).style("opacity", 1);
-                     tooltip.html(genre)  // Muestra el nombre del género
-                            .style("left", (event.pageX + 5) + "px")
-                            .style("top", (event.pageY - 28) + "px");
-                   })
-                   .on("mouseout", function() {
-                     d3.select(this)
-                       .transition()
-                       .duration(200)
-                       .attr("stroke-width", 2);  // Restaura el grosor original
-                     tooltip.transition().duration(200).style("opacity", 0);
-                   });
+                    d3.select(this)
+                      .transition()
+                      .duration(200)
+                      .attr("stroke-width", 4);  // Aumenta el grosor de la línea
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    tooltip.html(genre)  // Muestra el nombre del género
+                           .style("left", (event.pageX + 5) + "px")
+                           .style("top", (event.pageY - 28) + "px");
+                  })
+                  .on("mouseout", function() {
+                    d3.select(this)
+                      .transition()
+                      .duration(200)
+                      .attr("stroke-width", 2);  // Restaura el grosor original
+                    tooltip.transition().duration(200).style("opacity", 0);
+                  });
   });
 
   // Añadir los ejes
@@ -232,188 +232,200 @@ async function buildLineGraph() {
 
 buildLineGraph();
 
-
-
-///////////////////MAPA DE CALOR/////////////////////////////////
-
-async function buildHeatmap() {
-
-  const response = await fetch(`${API_BASE_URL}/heatmap_movie_releases`);
+async function renderVotesChart(containerId, tooltipId) {
+  const response = await fetch(`${API_BASE_URL}/votes_by_content_type`);
   if (!response.ok) throw new Error("Error al obtener los datos de la película");
   const data = await response.json();
 
-  // Configuraciones generales
-  const margin = { top: 40, right: 30, bottom: 40, left: 60 };
-  const width = document.getElementById("heat-map-chart").offsetWidth - margin.left - margin.right;
-  const height = 400 - margin.top - margin.bottom;
-  const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const container = d3.select(`#${containerId}`);
+  const tooltip = d3.select(`#${tooltipId}`);
+  container.select("svg").remove();
 
-  // Crear contenedor SVG
-  const svg = d3.select("#heat-map-chart")
-      .append("svg")
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  const width = container.node().getBoundingClientRect().width;
+  const height = container.node().getBoundingClientRect().height;
 
-  // Escalas
-  const x = d3.scaleBand().domain(monthNames).range([0, width]).padding(0.05);
-  const y = d3.scaleBand().domain(data.map(d => d.year)).range([0, height]).padding(0.05);
-  const color = d3.scaleSequential(d3.interpolateYlOrRd).domain([0, d3.max(data.flatMap(d => d.months))]);
+  const svg = container.append("svg").attr("width", width).attr("height", height);
 
-  // Crear celdas del mapa de calor
-  const cells = svg.selectAll(".cell")
-      .data(data.flatMap(d => d.months.map((count, i) => ({
-          year: d.year,
-          month: i,
-          count: count
-      }))))
-      .enter().append("rect")
-      .attr("class", "cell")
-      .attr("x", d => x(monthNames[d.month]))
-      .attr("y", d => y(d.year))
-      .attr("width", x.bandwidth())
-      .attr("height", y.bandwidth())
-      .attr("fill", d => color(d.count))
-      .on("mouseover", function(event, d) {
-          tooltip.style("visibility", "visible")
-              .text(`Año: ${d.year}, Mes: ${monthNames[d.month]}, Títulos: ${d.count}`);
-          d3.select(this).style("stroke", "#000").style("stroke-width", 2);
-      })
-      .on("mousemove", function(event) {
-          tooltip.style("top", (event.pageY + 10) + "px")
-              .style("left", (event.pageX + 10) + "px");
-      })
-      .on("mouseout", function() {
-          tooltip.style("visibility", "hidden");
-          d3.select(this).style("stroke", "#ddd").style("stroke-width", 1);
-      });
+  const margin = { top: 20, right: 30, bottom: 50, left: 100 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
 
-  // Ejes
-  svg.append("g")
-      .selectAll(".x-axis")
-      .data(monthNames)
-      .enter()
-      .append("text")
-      .attr("x", (d, i) => x(d) + x.bandwidth() / 2)
-      .attr("y", height)
-      .attr("class", "axis-label")
-      .text(d => d);
+  const g = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-  svg.append("g")
-      .selectAll(".y-axis")
-      .data(data.map(d => d.year))
-      .enter()
-      .append("text")
-      .attr("x", -10)
-      .attr("y", (d, i) => y(d) + y.bandwidth() / 2)
-      .attr("class", "axis-label")
-      .text(d => d);
+  const x = d3.scaleLinear().domain([0, d3.max(data, (d) => d.totalVotes)]).range([0, chartWidth]);
+  const y = d3.scaleBand().domain(data.map((d) => d.titleType)).range([0, chartHeight]).padding(0.2);
 
-  // Tooltip
-  const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+  const xAxis = d3.axisBottom(x).ticks(5).tickFormat(d3.format(".2s"));
+  const yAxis = d3.axisLeft(y);
+
+  g.append("g").attr("transform", `translate(0, ${chartHeight})`).call(xAxis);
+  g.append("g").call(yAxis);
+
+  g.selectAll(".bar")
+    .data(data)
+    .enter()
+    .append("rect")
+    .attr("class", "bar")
+    .attr("y", (d) => y(d.titleType))
+    .attr("height", y.bandwidth())
+    .attr("x", 0)
+    .attr("width", 0)
+    .attr("fill", "#69b3a2")
+    .on("mouseover", function (event, d) {
+      d3.select(this).attr("fill", "#217a6c");
+      tooltip
+        .style("visibility", "visible")
+        .html(`<strong>${d.titleType}</strong>: ${d3.format(",")(d.totalVotes)} votes`)
+        .style("left", event.pageX + 10 + "px")
+        .style("top", event.pageY - 28 + "px");
+    })
+    .on("mousemove", function (event) {
+      tooltip.style("left", event.pageX + 10 + "px").style("top", event.pageY - 28 + "px");
+    })
+    .on("mouseout", function () {
+      d3.select(this).attr("fill", "#69b3a2");
+      tooltip.style("visibility", "hidden");
+    })
+    .transition()
+    .duration(1000)
+    .attr("width", (d) => x(d.totalVotes));
+
+  g.selectAll(".label")
+    .data(data)
+    .enter()
+    .append("text")
+    .attr("class", "label")
+    .attr("x", (d) => x(d.totalVotes) + 5)
+    .attr("y", (d) => y(d.titleType) + y.bandwidth() / 2)
+    .attr("dy", ".35em")
+    .text((d) => d3.format(".2s")(d.totalVotes));
 }
 
-buildHeatmap();
+
+renderVotesChart("votes-chart", "votes-tooltip");
+
+window.addEventListener("resize", () => {
+  renderVotesChart("votes-chart", "votes-tooltip");
+});
 
 ///////////////ESCRITORES DIRECTORES//////////////////////////////////7
-async function createHeatmap() {
+async function renderDirectorsChart(containerId, tooltipId) {
 
-  const response = await fetch(`${API_BASE_URL}/collaboration_heatmap`);
+  const response = await fetch(`${API_BASE_URL}/top_directors_weighted`);
   if (!response.ok) throw new Error("Error al obtener los datos de la película");
   const data = await response.json();
 
-  const margin = { top: 50, right: 50, bottom: 100, left: 100 },
-        width = 900 - margin.left - margin.right,
-        height = 600 - margin.top - margin.bottom;
 
-  const svg = d3.select("#heatmap")
-      .append("svg")
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  const container = d3.select(`#${containerId}`);
+  const tooltip = d3.select(`#${tooltipId}`);
+  container.select("svg").remove();
 
-  // Extraer los actores, directores, escritores y las calificaciones
-  const actorsDirectors = Array.from(new Set(data.map(d => d.actor_director)));
-  const collaborators = Array.from(new Set(data.map(d => d.collaborator)));
+  // Dimensiones dinámicas
+  const containerWidth = container.node().getBoundingClientRect().width;
+  const containerHeight = container.node().getBoundingClientRect().height;
 
-  const colorScale = d3.scaleSequential(d3.interpolateBlues)
-      .domain([0, d3.max(data, d => d.averageRating)]);
+  const width = containerWidth;
+  const height = containerHeight;
+  const margin = { top: 40, right: 30, bottom: 100, left: 120 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
 
-  // Escalas para las posiciones X y Y
-  const xScale = d3.scaleBand()
-      .range([0, width])
-      .domain(actorsDirectors)
-      .padding(0.05);
+  // Crear SVG
+  const svg = container
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height);
 
-  const yScale = d3.scaleBand()
-      .range([height, 0])
-      .domain(collaborators)
-      .padding(0.05);
+  const g = svg
+    .append("g")
+    .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-  // Añadir las columnas (actores/directores)
-  svg.append("g")
-      .selectAll(".x-axis")
-      .data(actorsDirectors)
-      .enter().append("text")
-      .attr("class", "x-axis")
-      .attr("x", (d, i) => xScale(d) + xScale.bandwidth() / 2)
-      .attr("y", height + 40)
-      .attr("text-anchor", "middle")
-      .text(d => d)
-      .style("font-size", "12px")
-      .style("transform", "rotate(45deg)")
-      .style("transform-origin", "center center");
+  // Ordenar datos por weightedScore
+  data.sort((a, b) => b.weightedScore - a.weightedScore);
 
-  // Añadir las filas (colaboradores)
-  svg.append("g")
-      .selectAll(".y-axis")
-      .data(collaborators)
-      .enter().append("text")
-      .attr("class", "y-axis")
-      .attr("x", -50)
-      .attr("y", d => yScale(d) + yScale.bandwidth() / 2)
-      .attr("dy", ".35em")
-      .attr("text-anchor", "middle")
-      .text(d => d)
-      .style("font-size", "12px")
-      .style("writing-mode", "vertical-rl");
+  // Escalas
+  const x = d3.scaleLinear()
+    .domain([0, d3.max(data, d => d.weightedScore)])
+    .range([0, chartWidth]);
 
-  // Crear las celdas de la matriz de calor
-  svg.append("g")
-      .selectAll(".cell")
-      .data(data)
-      .enter().append("rect")
-      .attr("class", "cell")
-      .attr("x", d => xScale(d.actor_director))
-      .attr("y", d => yScale(d.collaborator))
-      .attr("width", xScale.bandwidth())
-      .attr("height", yScale.bandwidth())
-      .attr("fill", d => colorScale(d.averageRating))
-      .on("mouseover", function(event, d) {
-          d3.select(this).style("stroke", "#000").style("stroke-width", 2);
-          // Mostrar la calificación promedio al pasar el ratón
-          tooltip.transition().duration(200).style("opacity", .9);
-          tooltip.html(d.actor_director + " & " + d.collaborator + ": " + d.averageRating.toFixed(2))
-              .style("left", (event.pageX + 5) + "px")
-              .style("top", (event.pageY - 28) + "px");
-      })
-      .on("mouseout", function(d) {
-          d3.select(this).style("stroke", "none");
-          tooltip.transition().duration(500).style("opacity", 0);
-      });
+  const y = d3.scaleBand()
+    .domain(data.map(d => d.director))
+    .range([0, chartHeight])
+    .padding(0.2);
 
-  // Crear el tooltip
-  const tooltip = d3.select("body").append("div")
-      .attr("class", "tooltip")
-      .style("position", "absolute")
-      .style("text-align", "center")
-      .style("padding", "5px")
-      .style("background", "rgba(0,0,0,0.7)")
-      .style("color", "white")
-      .style("border-radius", "5px")
-      .style("opacity", 0);
+  // Ejes
+  const xAxis = d3.axisBottom(x).ticks(5).tickFormat(d3.format(".2f"));
+  const yAxis = d3.axisLeft(y);
 
+  g.append("g")
+    .attr("transform", `translate(0, ${chartHeight})`)
+    .call(xAxis);
+
+  g.append("g").call(yAxis);
+
+  // Barras
+  const bars = g.selectAll(".bar")
+    .data(data)
+    .enter()
+    .append("rect")
+    .attr("class", "bar")
+    .attr("y", d => y(d.director))
+    .attr("height", y.bandwidth())
+    .attr("x", 0)
+    .attr("width", 0)
+    .attr("fill", "#4A90E2")
+    .on("mouseover", function (event, d) {
+      d3.select(this).attr("fill", "#1C5A99");
+      tooltip
+        .style("visibility", "visible")
+        .html(`
+          <strong>${d.director}</strong><br>
+          Calificación promedio: ${d3.format(".2f")(d.averageRating)}<br>
+          Películas dirigidas: ${d.movieCount}<br>
+          Puntuación: ${d3.format(".2f")(d.weightedScore)}
+        `)
+        .style("left", event.pageX + 10 + "px")
+        .style("top", event.pageY - 28 + "px");
+    })
+    .on("mousemove", function (event) {
+      const tooltipWidth = tooltip.node().offsetWidth;
+      const tooltipHeight = tooltip.node().offsetHeight;
+      const pageWidth = document.body.clientWidth;
+
+      const xOffset = event.pageX + tooltipWidth > pageWidth ? -tooltipWidth - 10 : 10;
+      const yOffset = event.pageY + tooltipHeight > window.innerHeight ? -tooltipHeight - 10 : -28;
+
+      tooltip
+        .style("left", event.pageX + xOffset + "px")
+        .style("top", event.pageY + yOffset + "px");
+    })
+    .on("mouseout", function () {
+      d3.select(this).attr("fill", "#4A90E2");
+      tooltip.style("visibility", "hidden");
+    });
+
+  bars.transition()
+    .duration(800)
+    .attr("width", d => x(d.weightedScore))
+    .delay((_, i) => i * 50);
+
+  // Etiquetas
+  g.selectAll(".label")
+    .data(data)
+    .enter()
+    .append("text")
+    .attr("class", "label")
+    .attr("x", 0)
+    .attr("y", d => y(d.director) + y.bandwidth() / 2)
+    .attr("dx", "5px")
+    .attr("dy", "0.35em")
+    .attr("fill", "white")
+    .attr("font-size", "12px")
+    .text(d => d3.format(".2f")(d.weightedScore))
+    .transition()
+    .duration(800)
+    .attr("x", d => x(d.weightedScore) - 10)
+    .delay((_, i) => i * 50);
 }
-createHeatmap();
+
+renderDirectorsChart("directors-chart", "directors-tooltip");

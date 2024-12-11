@@ -6,11 +6,12 @@ import happybase
 from flask_cors import CORS
 from pyspark.sql.functions import col, floor, explode, split
 from pyspark.sql import functions as F
+from pyspark.storagelevel import StorageLevel
 
 ################################## INITIALICE ###########################################
 
 spark = SparkSession.builder.appName("BackendService").getOrCreate()
-EMR_HOST = "ec2-44-220-168-251.compute-1.amazonaws.com"
+EMR_HOST = "ec2-44-200-199-44.compute-1.amazonaws.com"
 HDFS_NAMENODE_HOST = EMR_HOST + ":8020"
 
 name_basics_parquet = "hdfs://"+HDFS_NAMENODE_HOST+"/user/hive/warehouse/name_basics_parquet/000000_0"
@@ -59,7 +60,6 @@ def load_title_ratings():
     return spark.read.format("parquet").load(title_ratings_parquet)
 
 def load_title_basics():
-    # Cargar el archivo title_basics desde HDFS, sin especificar partición
     return spark.read.format("parquet").load(title_basics_parquet)
 
 def load_title_ratings_by_id(tconst):
@@ -246,91 +246,81 @@ def distribution_genres_by_decade():
     
     return jsonify(result_list)
 
-
-@app.route('/heatmap_movie_releases', methods=['GET'])
-def heatmap_movie_releases():
-    # Cargar los datos desde el archivo Parquet
+@app.route('/votes_by_content_type', methods=['GET'])
+def votes_by_content_type():
+    # Cargar los datos desde los archivos Parquet
     df_title_basics = load_title_basics()
+    df_title_ratings = load_title_ratings()
 
-    # Filtrar por las columnas de interés (startYear y startMonth)
-    df_filtered = df_title_basics.select("startYear", "startMonth").filter(df_title_basics.startYear.isNotNull() & df_title_basics.startMonth.isNotNull())
+    # Seleccionar columnas relevantes y unir ambos DataFrames
+    df_basics = df_title_basics.select("tconst", "titleType")
+    df_ratings = df_title_ratings.select("tconst", "numVotes")
 
-    # Agrupar por año y mes y contar el número de lanzamientos
-    df_count = df_filtered.groupBy("startYear", "startMonth").count()
+    df_joined = df_basics.join(df_ratings, on="tconst", how="inner")
+
+    # Agrupar por tipo de contenido y sumar los votos
+    df_votes_by_type = df_joined.groupBy("titleType").sum("numVotes").withColumnRenamed("sum(numVotes)", "totalVotes")
+
+    # Ordenar por el total de votos en orden descendente
+    df_sorted = df_votes_by_type.orderBy("totalVotes", ascending=False)
 
     # Recoger los resultados
-    results = df_count.collect()
+    results = df_sorted.collect()
 
-    # Organizar los datos en una estructura de matriz para el mapa de calor
-    heatmap_data = {}
-    for row in results:
-        year = row['startYear']
-        month = row['startMonth']
-        count = row['count']
-        
-        if year not in heatmap_data:
-            heatmap_data[year] = [0] * 12  # Inicializar los 12 meses
-        heatmap_data[year][month - 1] = count  # Los meses empiezan en 1, así que restamos 1
+    # Convertir los resultados en una lista de diccionarios
+    response_data = [{"titleType": row["titleType"], "totalVotes": row["totalVotes"]} for row in results]
 
-    # Convertir la estructura en un formato adecuado para el frontend
-    heatmap_matrix = [{"year": year, "months": months} for year, months in heatmap_data.items()]
+    return jsonify(response_data)
 
-    return jsonify(heatmap_matrix)
-
-@app.route('/collaboration_heatmap', methods=['GET'])
-def collaboration_heatmap():
+@app.route('/top_directors_weighted', methods=['GET'])
+def top_directors_weighted():
     # Cargar los datos desde los archivos Parquet
     df_crew = load_title_crew()
-    df_principals = load_title_principals()
     df_ratings = load_title_ratings()
+    df_basics = load_title_basics()
+    df_names = load_name_basics()  # Cargar el archivo name.basics.tsv.gz
 
-    # Filtrar y seleccionar las columnas necesarias
-    df_crew_filtered = df_crew.select("tconst", "directors", "writers")
-    df_principals_filtered = df_principals.select("tconst", "nconst")  # nconst: Actor/actriz principal
-    df_ratings_filtered = df_ratings.select("tconst", "averageRating")
+    # Filtrar los datos necesarios
+    df_crew_filtered = df_crew.select("tconst", "directors").filter(F.col("directors").isNotNull())
+    df_ratings_filtered = df_ratings.select("tconst", "averageRating").filter(F.col("averageRating").isNotNull())
+    df_basics_filtered = df_basics.select("tconst", "titleType").filter(F.col("titleType") == "movie")
+    df_names_filtered = df_names.select("nconst", "primaryName")  # Seleccionar nconst y nombre del director
 
-    # Unir los DataFrames para obtener los directores, escritores, actores y las calificaciones promedio
-    df = df_crew_filtered.join(df_ratings_filtered, on="tconst", how="inner") \
-                         .join(df_principals_filtered, on="tconst", how="inner")
+    # Unir los datasets para incluir directores, calificaciones y solo películas
+    df_combined = df_crew_filtered.join(df_ratings_filtered, "tconst", "inner") \
+                                  .join(df_basics_filtered, "tconst", "inner")
 
-    # Crear un grafo de colaboraciones (unimos directores, escritores y actores)
-    # Para ello, separamos los directores y escritores en listas
-    df = df.withColumn("directors", F.split(col("directors"), ","))
-    df = df.withColumn("writers", F.split(col("writers"), ","))
+    # Separar los directores en filas individuales
+    df_directors_exploded = df_combined.withColumn("director", F.explode(F.split(F.col("directors"), ",")))
 
-    # Crear las combinaciones entre actores, directores y escritores
-    df_actor_director = df.withColumn("actor_director", F.explode("directors")) \
-                          .withColumn("collaborator", col("nconst")) \
-                          .select("actor_director", "collaborator", "averageRating")
-    
-    df_actor_writer = df.withColumn("actor_writer", F.explode("writers")) \
-                        .withColumn("collaborator", col("nconst")) \
-                        .select("actor_writer", "collaborator", "averageRating")
+    # Unir con los nombres de los directores
+    df_directors_with_names = df_directors_exploded.join(df_names_filtered, df_directors_exploded.director == df_names_filtered.nconst, "inner") \
+                                                   .select("primaryName", "averageRating", "tconst")
 
-    df_director_writer = df.withColumn("director_writer", F.explode("writers")) \
-                           .withColumn("collaborator", col("directors")) \
-                           .select("director_writer", "collaborator", "averageRating")
+    # Calcular la calificación promedio y el número de películas por director
+    df_avg_rating = df_directors_with_names.groupBy("primaryName") \
+                                           .agg(F.avg("averageRating").alias("averageRating"), 
+                                                F.count("tconst").alias("movieCount"))
 
-    # Unir todas las combinaciones
-    df_combined = df_actor_director.union(df_actor_writer).union(df_director_writer)
+    # Calcular la puntuación ponderada
+    df_avg_rating = df_avg_rating.withColumn(
+        "weightedScore", 
+        F.col("averageRating") * F.log(F.col("movieCount") + 1)
+    )
 
-    # Agrupar por las combinaciones y calcular la calificación promedio
-    df_grouped = df_combined.groupBy("actor_director", "collaborator") \
-                            .agg(F.avg("averageRating").alias("averageRating"))
+    # Ordenar los resultados por puntuación ponderada (descendente) y limitar los top N
+    df_top_directors = df_avg_rating.orderBy(F.desc("weightedScore")).limit(25)
 
     # Recoger los resultados
-    results = df_grouped.collect()
+    results = df_top_directors.collect()
 
-    # Organizar los datos en un formato adecuado para el frontend
-    collaboration_matrix = []
-    for row in results:
-        collaboration_matrix.append({
-            "actor_director": row['actor_director'],
-            "collaborator": row['collaborator'],
-            "averageRating": row['averageRating']
-        })
+    # Convertir los resultados a un formato JSON
+    top_directors = [{"director": row["primaryName"], 
+                      "averageRating": row["averageRating"], 
+                      "movieCount": row["movieCount"], 
+                      "weightedScore": row["weightedScore"]} for row in results]
 
-    return jsonify(collaboration_matrix)
+    return jsonify(top_directors)
 #https://image.tmdb.org/t/p/original/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg
 
 #https://image.tmdb.org/t/p/original/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg

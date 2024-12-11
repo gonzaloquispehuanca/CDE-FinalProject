@@ -1,53 +1,52 @@
 /* General styles */
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f5f5f5;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #f4f4f4;
+}
   
-  /* Contenedor principal */
-  .grid-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-
-    gap: 20px;
-    width: 80%;
-    max-width: 1200px;
-    height: 90%;
-  }
-
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 20px;
+  width: 99%;
+  height: 99%;
+}
   .table-container {
-    max-height: 400px; /* Ajusta la altura según sea necesario */
+    max-height: 180px; /* Ajusta la altura según sea necesario */
     overflow-y: auto; /* Permite el desplazamiento vertical */
   }
   
   
-  /* Estilo común para todas las celdas */
   .grid-cell {
     background: #ffffff;
     border-radius: 10px;
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 20px;
+    padding: 10px;
     display: flex;
     justify-content: center;
     align-items: center;
     position: relative;
     overflow: hidden;
   }
-  
-  /* Asegurar que el contenido se ajuste */
+
   .grid-cell > div {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
   }
-  
+
+  svg {
+    max-width: 100%;
+    max-height: 100%;
+  }
+
   /* Rating Widget */
   #rating-widget {
     text-align: center;
@@ -192,7 +191,7 @@ body {
 
 #genre-distribution-chart {
   width: 100%;
-  height: 400px;
+  height: 100%;
 }
 
 .cell {
@@ -207,15 +206,6 @@ body {
 }
 
 
-.tooltip {
-  position: absolute;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 5px;
-  border-radius: 3px;
-  pointer-events: none;
-  visibility: hidden;
-}
 
 #heatmap {
   margin-top: 30px;
@@ -225,4 +215,31 @@ body {
 
 h2 {
   color: #333;
+}
+.chart-container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+}
+.votes-tooltip-custom {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  pointer-events: none;
+  font-size: 12px;
+  text-align: center;
+  visibility: hidden;
+}
+
+.tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  font-size: 14px;
+  pointer-events: none;
+  visibility: hidden;
 }
