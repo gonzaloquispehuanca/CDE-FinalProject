@@ -99,7 +99,6 @@ Configura un clúster de **Elastic MapReduce (EMR)** en Amazon para manejar Hado
     exit 
     sudo -u hdfs hdfs dfs -chmod 755 /user
     sudo -u hdfs hdfs dfs -chmod 775 /user
-    #sudo -u hdfs hdfs dfs -chown -R ec2-user:ec2-user /user
     sudo -u hdfs hdfs dfs -chmod -R 775 /user
     hdfs dfs -ls /user
     ```
@@ -133,19 +132,6 @@ WantedBy=multi-user.target
     sudo systemctl start hadoop_service
     sudo systemctl status hadoop_service
     ```
-### 8. Ejecuta
-    ```bash
-    sudo nano /etc/hbase/conf/hbase-site.xml
-    ```
-### 9. Agrega
-<property>
-    <name>hbase.regionserver.handler.count</name>
-    <value>30</value> <!-- Incrementa este valor -->
-</property>
-
-### 10. Reinicia el servicio
-sudo service hbase-master restart
-
 
 ## Creación y Ejecución del Servicio BACKend
 Este servicio permite realizar consultas HTTP a los archivos almacenados en **HDFS** utilizando un servidor **Flask** y **PySpark**.
