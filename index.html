@@ -3,145 +3,81 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Movie Rating</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f5f5f5;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .rating-container {
-      background: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 20px;
-      width: 300px;
-      text-align: center;
-    }
-    .rating-container h2 {
-      margin-bottom: 20px;
-      color: #333;
-    }
-    .rating-container input {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    .stars {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 15px;
-    }
-    .stars span {
-      font-size: 30px;
-      color: #ccc;
-      cursor: pointer;
-      margin: 0 5px;
-    }
-    .stars span.active {
-      color: #ffcc00;
-    }
-    .stars span:hover ~ span {
-      color: #ccc;
-    }
-    .stars span:hover {
-      color: #ffcc00;
-    }
-    .rating-container button {
-      background: #007BFF;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    .rating-container button:hover {
-      background: #0056b3;
-    }
-  </style>
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
-  <div class="rating-container">
-    <h2>Rate a Movie</h2>
-    <input type="text" id="movieId" placeholder="Enter movie ID (ttconst)">
-    <div class="stars" id="stars">
-      <span data-value="1">&#9733;</span>
-      <span data-value="2">&#9733;</span>
-      <span data-value="3">&#9733;</span>
-      <span data-value="4">&#9733;</span>
-      <span data-value="5">&#9733;</span>
+  <div class="grid-container">
+    <!-- Celda 1 -->
+    <div class="grid-cell">
+      <div id="rating-widget">
+        <h2>Rate a Movie</h2>
+        <span>Se envía al broker de kafkta</span>
+        <input type="text" id="movieId" placeholder="Enter movie ID (ttconst)">
+        <div class="stars" id="stars">
+          <span data-value="1">&#9733;</span>
+          <span data-value="2">&#9733;</span>
+          <span data-value="3">&#9733;</span>
+          <span data-value="4">&#9733;</span>
+          <span data-value="5">&#9733;</span>
+        </div>
+        <button onclick="submitVote()">Send Rating</button>
+      </div>
     </div>
-    <button onclick="submitVote()">Send Rating</button>
+
+    <!-- Celda 2 -->
+    <div class="grid-cell">
+      <div id="movie-score-container">
+        <button id="refresh-score" class="refresh-button">🔄</button>
+        <h3>Puntuación de la película</h3>
+        <span>Obtenido de Parquet y HBase</span>
+        <p id="average-rating" class="score"></p>
+        <p id="num-votes" class="timestamp"></p>
+      </div>
+    </div>
+
+    <!-- Celda 3 -->
+    <div class="grid-cell" style="overflow: visible; !important">
+      <div id="genre-distribution-chart"></div>
+    </div>
+
+    <!-- Celda 4 -->
+    <div class="grid-cell">
+      <div id="movie-ratings">
+        <button id="refreshButton" class="refreshButton">⟳ Refresh</button>
+        <div class="table-container">
+          <span>Lee HBase del EMR</span>
+          <table id="ratingsTable">
+            <thead>
+              <tr>
+                <th>Película</th>
+                <th>Voto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Datos se llenarán dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+
+    <!-- Celda 5 -->
+    <div class="grid-cell" style="overflow: visible;">
+        <div id="heat-map-chart"></div>
+    </div>
+
+    <!-- Celda 6 -->
+    <div class="grid-cell">
+      <div class="heatmap-container">
+        <h2>Impacto de la Colaboración en las Calificaciones Promedio</h2>
+        <div id="heatmap"></div>
+      </div>
+    </div>
   </div>
 
-  <script>
-    let selectedRating = 0;
-
-    // Handle star clicks
-    document.querySelectorAll('.stars span').forEach(star => {
-      star.addEventListener('click', function () {
-        selectedRating = parseInt(this.getAttribute('data-value'));
-        highlightStars(selectedRating);
-      });
-    });
-
-    // Highlight stars based on selection
-    function highlightStars(rating) {
-      document.querySelectorAll('.stars span').forEach(star => {
-        if (parseInt(star.getAttribute('data-value')) <= rating) {
-          star.classList.add('active');
-        } else {
-          star.classList.remove('active');
-        }
-      });
-    }
-
-    // Send vote via POST request
-    function send_vote(ttconst, vote) {
-      const KAFKA_PRODUCER_HOST = "ec2-34-207-77-161.compute-1.amazonaws.com"
-      const url = "http://"+KAFKA_PRODUCER_HOST+":8082/topics/movie_vote";
-      const headers = {
-        "Content-Type": "application/vnd.kafka.json.v2+json"
-      };
-      const payload = JSON.stringify({
-        records: [{ value: `${ttconst}_${vote}` }]
-      });
-
-      fetch(url, {
-        method: "POST",
-        headers: headers,
-        body: payload
-      })
-        .then(response => {
-          if (response.ok) {
-            console.log("Se envió correctamente");
-          } else {
-            console.error("Error al enviar la votación");
-          }
-        })
-        .catch(error => console.error("Error:", error));
-    }
-
-    // Handle submit
-    function submitVote() {
-      const movieId = document.getElementById("movieId").value;
-      if (!movieId) {
-        alert("Por favor, ingresa el ID de la película");
-        return;
-      }
-      if (selectedRating === 0) {
-        alert("Por favor, selecciona una puntuación");
-        return;
-      }
-      send_vote(movieId, selectedRating);
-    }
-  </script>
+  <script src="scripts.js"></script>
 </body>
 </html>

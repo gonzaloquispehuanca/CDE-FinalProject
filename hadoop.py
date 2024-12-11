@@ -346,11 +346,11 @@ def run_process():
 
 
 if __name__ == "__main__":
-    #INTERVAL_MINUTES = 60
-    ## Cálculo del intervalo en segundos
-    #interval_seconds = INTERVAL_MINUTES * 60
-    #while True:
-    #    print("Iniciando ciclo de ejecución...")
+    INTERVAL_MINUTES = 600
+    # Cálculo del intervalo en segundos
+    interval_seconds = INTERVAL_MINUTES * 60
+    while True:
+        print("Iniciando ciclo de ejecución...")
         run_process()
-    #    print(f"Esperando {INTERVAL_MINUTES} minutos para la próxima ejecución.")
-    #    time.sleep(interval_seconds)
+        print(f"Esperando {INTERVAL_MINUTES} minutos para la próxima ejecución.")
+        time.sleep(interval_seconds)

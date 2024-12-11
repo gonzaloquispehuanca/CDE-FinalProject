@@ -7,7 +7,7 @@ Autor: **Gonzalo Emiliano Quispe Huanca**
 Este documento detalla los pasos necesarios para implementar el proyecto final, incluyendo la configuración de un **broker de Kafka** en una instancia EC2 de Amazon Web Services (AWS).  
 
 ### Variables Importantes:
-Debe actualizar estas variables en los scripts de hadoop.py, backend.py, consumer.py e index.html antes de continuar con el proceso.
+Debe actualizar estas variables en los scripts de hadoop.py, backend.py, consumer.py y scripts.js antes de continuar con el proceso.
 - `{KAFKA_PRODUCER_HOST}`: Corresponde al DNS público del broker de Kafka.
 - `{EMR_HOST}`: Corresponde al DNS público del EMR Amazon con Hadoop.
 
@@ -79,6 +79,7 @@ Configura un clúster de **Elastic MapReduce (EMR)** en Amazon para manejar Hado
     hbase shell
     create 'movie_vote', 'data'
     list
+    exit
     ```
 
 ### 3. Otorga los permisos necesarios a las carpetas dentro del sistema de archivos HDFS:
@@ -92,10 +93,13 @@ Configura un clúster de **Elastic MapReduce (EMR)** en Amazon para manejar Hado
     hdfs dfs -chown -R hbase:hbase /user/hbase
     hdfs dfs -ls -R /user/hbase
     hdfs dfs -chmod -R 755 /user/hbase
+    hdfs dfs -chmod 777 /user/hbase
+    hdfs dfs -chmod -R 777 /user/hbase/*
+    hdfs dfs -chown -R hbase:hbase /user/hbase
     exit 
     sudo -u hdfs hdfs dfs -chmod 755 /user
     sudo -u hdfs hdfs dfs -chmod 775 /user
-    sudo -u hdfs hdfs dfs -chown -R ec2-user:ec2-user /user
+    #sudo -u hdfs hdfs dfs -chown -R ec2-user:ec2-user /user
     sudo -u hdfs hdfs dfs -chmod -R 775 /user
     hdfs dfs -ls /user
     ```
@@ -108,7 +112,6 @@ Configura un clúster de **Elastic MapReduce (EMR)** en Amazon para manejar Hado
     ```bash
     sudo nano /etc/systemd/system/hadoop_service.service
     ```
-
 ### 6.Pega el siguiente contenido en el archivo:
 
 [Unit]
@@ -130,6 +133,19 @@ WantedBy=multi-user.target
     sudo systemctl start hadoop_service
     sudo systemctl status hadoop_service
     ```
+### 8. Ejecuta
+    ```bash
+    sudo nano /etc/hbase/conf/hbase-site.xml
+    ```
+### 9. Agrega
+<property>
+    <name>hbase.regionserver.handler.count</name>
+    <value>30</value> <!-- Incrementa este valor -->
+</property>
+
+### 10. Reinicia el servicio
+sudo service hbase-master restart
+
 
 ## Creación y Ejecución del Servicio BACKend
 Este servicio permite realizar consultas HTTP a los archivos almacenados en **HDFS** utilizando un servidor **Flask** y **PySpark**.
@@ -141,6 +157,7 @@ Este servicio permite realizar consultas HTTP a los archivos almacenados en **HD
 ### 2. Instalar las dependencias
     ```bash
     pip install flask pyspark
+    pip install flask-cors
     ```
 ### 3. Crear el archivo backend.py. Luego copia el contenido de backend.py
     ```bash
@@ -151,17 +168,17 @@ Este servicio permite realizar consultas HTTP a los archivos almacenados en **HD
     sudo nano /etc/systemd/system/backend_service.service
     ```
 ### 5. Copiar el contenido
-    [Unit]
-    Description=Servicio Flask para consultas spark
-    After=network.target
+[Unit]
+Description=Servicio Flask para consultas spark
+After=network.target
 
-    [Service]
-    ExecStart=/usr/bin/python3 /home/ec2-user/backend.py
-    Restart=always
-    User=ec2-user
+[Service]
+ExecStart=/usr/bin/python3 /home/ec2-user/backend.py
+Restart=always
+User=ec2-user
 
-    [Install]
-    WantedBy=multi-user.target
+[Install]
+WantedBy=multi-user.target
 
 ### 6. Inicializar el servicio
     ```bash
@@ -193,17 +210,15 @@ Ejecuta los siguientes comandos para instalar las dependencias necesarias:
     sudo nano /etc/systemd/system/consumer_service.service
     ```
 ### 5. Copiar el contenido
-    [Unit]
-    Description=Servicio Python para consumir evetos kafka
-    After=network.target
-
-    [Service]
-    ExecStart=/usr/bin/python3 /home/ec2-user/consumer.py
-    Restart=always
-    User=ec2-user
-
-    [Install]
-    WantedBy=multi-user.target
+[Unit]
+Description=Servicio Python para consumir evetos kafka
+After=network.target
+[Service]
+ExecStart=/usr/bin/python3 /home/ec2-user/consumer.py
+Restart=always
+User=ec2-user
+[Install]
+WantedBy=multi-user.target
 
 ### 6. Inicializar el servicio
     ```bash
